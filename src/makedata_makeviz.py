@@ -217,7 +217,7 @@ def autolabelpercentmid(ax, xpos='center'):
         height = bar.get_height()
         heightval=str(int(bar.get_height()*100))+ '%'
         ax.text(bar.get_x() + bar.get_width()*offset[xpos], (0.5*height),
-        heightval, fontsize=8, ha=ha[xpos], va='bottom', color='white', alpha=1)
+        heightval, fontsize='small', ha=ha[xpos], va='bottom', color='white', alpha=1)
 
 
 def autolabelpercenttop(ax, xpos='center'):
@@ -236,7 +236,7 @@ def autolabelpercenttop(ax, xpos='center'):
         height = bar.get_height()
         heightval=str(int(bar.get_height()*100))+ '%'
         ax.text(bar.get_x() + bar.get_width()*offset[xpos], (1.01*height),
-        heightval, fontsize=12, ha=ha[xpos], va='bottom', color=bar.get_facecolor(), alpha=1)
+        heightval, fontsize='small', ha=ha[xpos], va='bottom', color=bar.get_facecolor(), alpha=1)
 
 
 
@@ -312,7 +312,7 @@ for surveyitem in surveyitems:
     filename=graphs/"{}_trend_by_segment.png".format(surveyitem)
 
 
-    fig, axes = plt.subplots(nrows=rows, ncols=1, sharex='col', figsize=(4, 10))
+    fig, axes = plt.subplots(nrows=rows, ncols=2, sharex='col', figsize=(4, 10))
     sns.set_style('white')
 
     axs = fig.axes
@@ -381,3 +381,70 @@ for surveyitem in surveyitems:
 
 
 ##
+
+
+
+
+# by segment allpolls
+
+########################################
+
+data_mt=grouped_weights_statsdf(longi, surveyitems, 'mentality_en', 'wgprop')
+data_mt['err']=data_mt['weighted mean']-data_mt['lower bound']
+data_mt['color']=data_mt.index.get_level_values('groups').map(segmentcolormap_en)
+
+data_t=grouped_weights_statsdf(longi, surveyitems, 'total', 'wgprop')
+
+
+
+##by segment
+
+titledict_s={k: v.replace('by poll and segment', 'by segment') for (k,v) in titledict.items()}
+
+for surveyitem in surveyitems: 
+    filename=graphs/"{}_by_segment.png".format(surveyitem)
+
+    fig, axes = plt.subplots(nrows=1, ncols=2, sharey='col', gridspec_kw={'width_ratios':[1,8], 'wspace':0.3},  figsize=(4,3))
+    axs = fig.axes
+
+    sel=data_t.loc[idx[surveyitem, :], :].droplevel('outcome')
+
+
+    axs[0].bar(x=sel.index, height=sel['weighted mean'], color='black')
+    axs[0].set_title('Total', size='small')
+
+
+    
+    sel_mt=data_mt.loc[idx[surveyitem,:], :].droplevel('outcome').sort_values(by='weighted mean', ascending=False)
+    axs[1].bar(x=sel_mt.index, height=sel_mt['weighted mean'], color=sel_mt['color'])
+    axs[1].set_title('by segment', size='small')
+    axs[1].get_yaxis().set_visible(False)
+
+    #annotate
+    for ax in axs: 
+        autolabelpercenttop(ax)
+        ax.set_ylim((0, 1))
+        ax.yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
+
+        # spines #ticks
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines["left"].set_position(("outward", +5))
+        ax.spines["bottom"].set_position(("outward", +5))
+        ax.tick_params(axis='y', left=True)
+
+    for tick, color in zip(axs[1].get_xticklabels(),sel_mt['color']) : 
+        tick.set_color(color)
+        tick.set_rotation(90)
+
+    fig.suptitle(titledict_s[surveyitem], size='large', weight='bold', y=1.15, x=0, ha='left',  color='black')
+    nrobs=str(sel.tot_n_unweigthed[0])
+    #footnotes
+    if surveyitem=='btb_wouldswitch_d':
+        plt.figtext(0,-0.6,'% of respondents (very) likely to switch supermarket \n by poll & segment\nSource: Quarterly polls Q4-2018-Q1-2020 combined\nn total='+ nrobs,fontsize='small', ha='left')
+    else: 
+        plt.figtext(0,-0.6,'% of respondents agree or completely agree \nby poll & segment\nSource: Quarterly polls Q4-2018-Q1-2020\nn total='+ nrobs,fontsize='small', ha='left')
+    
+    fig.savefig(filename, dpi=600, facecolor='w', bbox_inches='tight')
+    fig.show()
+
