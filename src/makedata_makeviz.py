@@ -300,7 +300,7 @@ idx = pd.IndexSlice
 
 
 titledict = {'btb_fairtreatment_d': "It is important that my supermarket \nis comitted to a fair treatment of workers,\nby poll and segment",
-             'btb_livingwage_d': "It is important that my supermarket is comitted\nto a fair treatment of workers,\nby poll and segment",
+             'btb_livingwage_d': "It is important that my supermarket \nis comitted to ensuring fair wages\nthroughout the value chain,\nby poll and segment",
              'btb_wouldswitch_d': "Likelihood of switching to supermarket \nmore comitted to fair treatment of workers"}
 
 
