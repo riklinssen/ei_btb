@@ -448,3 +448,65 @@ for surveyitem in surveyitems:
     fig.savefig(filename, dpi=600, facecolor='w', bbox_inches='tight')
     fig.show()
 
+
+
+###############seen btb
+
+q12020['btb_seen_btb_d']=q12020.btb_seen_btb.cat.codes.apply(lambda x: 1 if x>1 else x)
+q12020['Total']='total'
+
+
+surveyitems=['btb_seen_btb_d']
+sel_t=grouped_weights_statsdf(q12020, surveyitems, 'total', 'wgprop')
+sel_mt=grouped_weights_statsdf(q12020, surveyitems, 'mentality_en', 'wgprop').sort_values(by='weighted mean')
+
+sel_mt['err']=sel_mt['weighted mean']-sel_mt['lower bound']
+sel_mt['color']=sel_mt.index.get_level_values('groups').map(segmentcolormap_en)
+
+sel_t['err']=sel_t['weighted mean']-data_t['lower bound']
+sel_t['color']='black'
+
+
+sel_t=sel_t.droplevel('outcome')
+sel_mt=sel_mt.droplevel('outcome')
+
+filename=graphs/'heardaboutbtb.png'
+widths=[1,6]
+heights=[1]
+fig=plt.figure(figsize=(4, 4.5))
+gs = fig.add_gridspec(nrows=1, ncols=2, width_ratios=widths, height_ratios=heights)
+ax1=fig.add_subplot(gs[0, 0])
+ax1.bar(x=sel_t.index, height=sel_t['weighted mean'],  color=sel_t['color'], yerr=sel_t['err'], ecolor='lightgrey')
+ax1.set_title('Total \n(% of population)')
+ax2=fig.add_subplot(gs[0, 1], sharey=ax1)
+ax2.bar(x=sel_mt.index, height=sel_mt['weighted mean'], color=sel_mt['color'], yerr=sel_mt['err'], ecolor='lightgrey')
+ax2.set_title('by segment \n(% of segment)')
+for ax in fig.axes:
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1))
+    ax.set_ylim(0,1)
+    ax.set_ylabel('% of people that heard about btb-issues in the news', fontstyle='italic') 
+    autolabelpercenttop(ax, xpos='left')
+
+    #labels
+    for label in ax.get_xticklabels():
+        label.set_rotation(90)
+        label.set_ha('center')
+        label.set_fontsize('large')
+    
+    #spines
+    ax.spines['left'].set_visible(True)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+ax2.axes.get_yaxis().set_visible(False)
+ax2.spines['left'].set_visible(False)
+
+fig.suptitle("Has heard about btb-issues in the news\n past 3 months", size='x-large', y=1.05, color='black')
+
+#footnotes
+nrobs=str(sel_t.at['total','tot_n_unweigthed'])
+plt.figtext(0, -0.5, 'Source: Quarterly poll Q1 2020 (Feb),' + ' n=' +nrobs +'\nvertical lines represent 95% confidence intervals' ,  size='small')
+
+
+fig.savefig(filename,  facecolor='w', bbox_inches='tight')
+
