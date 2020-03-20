@@ -252,4 +252,132 @@ graphs = base_path / "graphs"
 
 
 #MAKE DATASETS
+q12020= pd.read_pickle(data/"q1_2020_clean.pkl" )
+q32019= pd.read_pickle(data/"q3_2019_clean.pkl" )
+q12019= pd.read_pickle(data/"q1_2019_clean.pkl" )
+longi= pd.read_pickle(data/"longitudinal.pkl" )
+
+
+
+btbitems=['btb_fairtreatment', 'btb_fairtreatment_d', 'btb_livingwage', 'btb_livingwage_d', 'btb_wouldswitch', 'btb_wouldswitch_d']
+
+for c in btbitems: 
+    print(longi.groupby('surveysource')[c].value_counts(dropna=False))
+
+#btb_fairtreatment: 
+#In hoeverre ben je het eens of oneens met deze stellingen? Ik vind het belangrijk dat de supermarkt waar ik boodschappen doe er alles aan doet zodat werknemers in de hele productieketen eerlijk behandeld worden
+#all polls (q4 2018, q12019, q32019, q12020)
+
+#btb_livingwage
+#Q8_3 In hoeverre ben je het eens of oneens met deze stellingen? Ik vind het belangrijk dat de supermarkt waar ik boodschappen doe er alles aan doet zodat werknemers loon verdienen waar zij met hun gezin van kunnen leven
+#q12019, q32019, q12020
+
+#btb_wouldswitch
+#all polls (q4 2018, q12019, q32019, q12020)
+
+longi['total']='total'
+
+#surveydate
+longi['surveydate']=longi['surveydate'].fillna('2020-02-27 00:00:00')
+longi['surveydate']=pd.to_datetime(longi['surveydate'])
+
+surveyitems=['btb_fairtreatment_d', 'btb_livingwage_d', 'btb_wouldswitch_d']
+data_t=grouped_weights_statsdf(longi, surveyitems, ['surveydate','total'], 'wgprop')
+data_t['date']=[c[0] for c in data_t.index.get_level_values('groups')]
+#data_t['date']=data_t['date'].dt.to_period("Q")
+data_t['group']=[c[1] for c in data_t.index.get_level_values('groups')]
+data_t['err']=data_t['weighted mean']-data_t['lower bound']
+
+
+data_mt=grouped_weights_statsdf(longi, surveyitems, ['surveydate','mentality_en'], 'wgprop')
+data_mt['date']=[c[0] for c in data_mt.index.get_level_values('groups')]
+data_mt['group']=[c[1] for c in data_mt.index.get_level_values('groups')]
+
+mentalitynames=[m for m in segmentcolormap_en.keys() if  'Total' not in m]
+
+
+idx = pd.IndexSlice
+
+
+titledict = {'btb_fairtreatment_d': "It is important that my supermarket \nis comitted to a fair treatment of workers,\nby poll and segment",
+             'btb_livingwage_d': "It is important that my supermarket is comitted\nto a fair treatment of workers,\nby poll and segment",
+             'btb_wouldswitch_d': "Likelihood of switching to supermarket \nmore comitted to fair treatment of workers"}
+
+
+
+rows=len(mentalitynames)+1
+
+#######btb items
+for surveyitem in surveyitems: 
+    filename=graphs/"{}_trend_by_segment.png".format(surveyitem)
+
+
+    fig, axes = plt.subplots(nrows=rows, ncols=1, sharex='col', figsize=(4, 10))
+    sns.set_style('white')
+
+    axs = fig.axes
+
+
+    #total:
+    sel = data_t.loc[idx[surveyitem, :], :].set_index(['date'])
+
+
+    axs[0].plot(sel.index, sel['weighted mean'], ls='-', marker='.', color='black')
+    #annotations
+    last_q = sel.index.max()
+    #set annotate value
+    percstr = str(int(round(sel.at[last_q, 'weighted mean']*100, 0))) + '%'
+    percloc = (last_q, sel.at[last_q, 'weighted mean'])
+    axs[0].annotate(s=percstr, xy=percloc, xytext=[5, -2],
+                    textcoords='offset points', color='black', size='small')
+    axs[0].set_title('Total', size='small')
+
+    #by mentality
+    for i, ment in zip(range(1, rows), mentalitynames):
+        outc = data_mt.loc[idx[surveyitem, :], :]
+        sel = outc.loc[outc['group'] == ment].set_index('date')
+        kleur = segmentcolormap_en[ment]
+        axs[i].plot(sel.index, sel['weighted mean'],
+                    ls='-', marker='.', color=kleur)
+        #set annotate value
+        percstr = str(int(round(sel.at[last_q, 'weighted mean']*100, 0))) + '%'
+        percloc = (last_q, sel.at[last_q, 'weighted mean'])
+        axs[i].annotate(s=percstr, xy=percloc, xytext=[5, -2],
+                        textcoords='offset points', color=kleur, size='small')
+        axs[i].set_title(ment, size='small', color=kleur)
+
+
+    #spines
+    for i in range(0, len(axs)):
+        axs[i].spines['left'].set_visible(True)
+        axs[i].spines['top'].set_visible(False)
+        axs[i].spines['right'].set_visible(False)
+        axs[i].spines["left"].set_position(("outward", +5))
+        axs[i].spines["bottom"].set_position(("outward", +5))
+        axs[i].tick_params(axis='x', bottom=True)
+        axs[i].tick_params(axis='y', left=True)
+
+    #all axes
+    for ax in axs:
+        ax.set_ylim((0, 1))
+        ax.yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
+
+    plt.subplots_adjust(top=0.4)
+
+
+    fig.autofmt_xdate()
+    fig.tight_layout()
+
+    fig.suptitle(titledict[surveyitem], size=14, weight='bold', y=1.07, color='black')
+    nrobs=str(sel.tot_n_unweigthed[0])
+    #footnotes
+    if surveyitem=='btb_wouldswitch_d':
+        plt.figtext(0,-0.05,'% of respondents (very) likely to switch supermarket \n by poll & segment\nSource: Quarterly polls Q4-2018-Q1-2020\nntotal='+ nrobs,fontsize='small', ha='left')
+    else: 
+        plt.figtext(0,-0.05,'% of respondents agree or completely agree \nby poll & segment\nSource: Quarterly polls Q4-2018-Q1-2020\nntotal='+ nrobs,fontsize='small', ha='left')
+    
+    fig.savefig(filename, dpi=600, facecolor='w', bbox_inches='tight')
+    fig.show()
+
+
 
